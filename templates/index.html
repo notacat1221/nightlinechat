@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* CSS styles for the layout */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Ensure the body takes at least the full height of the viewport */
+            position: relative;
+        }
+        #message-container {
+            flex: 1;
+            overflow-y: scroll; /* Use 'auto' instead of 'hidden' to show the scrollbar when needed */
+            display: flex;
+            flex-direction: column;
+            width: 75%;
+            max-height: 80%;
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+            box-sizing: border-box; /* Ensure padding and border are included in the width */
+            position: absolute;
+            bottom: 70px;
+        }
+        #messages {
+            flex: 1; /* Allow the message list to take up remaining vertical space */
+        }
+
+        #chat-bar {
+            position: fixed;
+            bottom: 0;
+            width: 75%;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-top: 1px solid #ccc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #message-input {
+            flex: 1; /* Let the input take as much space as possible */
+            margin-right: 0px; /* Add some spacing to the right of the input */
+        }
+
+        #right-panel {
+            font-family: "Your Chosen Font", sans-serif;
+            color: #FFFFFF;
+            background-color: #672146;
+            position: fixed;
+            right: 0;
+            width: 24%; /* Adjust the width as needed */
+            height: 100%; /* Takes the full height of the message container */
+        }
+
+        #user-indicator {
+            position: fixed;
+            bottom: 5px;
+            right: 5px;
+            background-color: #f0f0f0;
+            padding: 0px;
+            margin: 0;
+            border: 1px solid #ccc;
+            font-family: "Your Chosen Font", sans-serif;
+            font-size: 12px;
+        }
+    </style>
+    <title>Chat App</title>
+</head>
+<body>
+    <!-- Room selection dropdown and button -->
+    <div id="room-selection">
+        <label for="room">Choose a room:</label>
+        <select id="room">
+            <!-- Rooms will be dynamically added here -->
+        </select>
+        <button onclick="joinRoom()">Join Room</button>
+    </div>
+
+    <!-- Message display area -->
+    <div id="message-container">
+        <ul id="messages"></ul>
+    </div>
+
+
+    <!-- Message input and send button -->
+    <div id="chat-bar">
+        <input id="message_input" autocomplete="off">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <!-- Right panel with app title -->
+    <div id="right-panel">
+        <h3>SafeguardChat</h3>
+    </div>
+
+    <!-- User indicator, shows username and logout button if logged in -->
+    <div id="user-indicator">
+        {% if currentUser %}
+            <p>Logged in as: {{ currentUser }}</p>
+            <a href="{{ url_for('logout') }}"><button>Logout</button></a>
+        {% else %}
+            <p>Not logged in</p>
+            <a href="{{ url_for('login') }}"><button>Login</button></a>
+        {% endif %}
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.3/socket.io.js"></script>
+    <!-- Socket.io library for real-time communication -->
+    <script>
+        // Initialize Socket.io
+        var socket = io();
+
+        // Default room and user type
+        var userType = '{{session.get("userType")}}';
+        var currentUser = '{{session.get("username")}}'
+        var currentRoom = '{{session.get("room")}}'
+        var roomSelection = document.getElementById('room-selection');
+
+        // Function to join a new room
+        function joinRoom() {
+            if (userType === 'guardian' || userType === 'administator') {
+                var newRoom = document.getElementById('room').value;
+                leaveRoom()
+                socket.emit('join', { room: newRoom, username: currentUser });
+                currentRoom = newRoom;
+                updateRoomList();
+            }
+        }
+        function leaveRoom(){
+            socket.emit('leave', { room: currentRoom });
+        }
+
+        // Emit 'assignStudentRoom' event if the user is a student
+        if(userType === 'student') {
+            roomSelection.style.display = 'none';
+            assignRoom()
+            console.log(currentRoom, 'post assignment')
+        }
+        //Function to handle student room assignment
+        function assignRoom(){
+            socket.emit('assignStudentRoom', {username: currentUser});
+        }
+        // Event handler for 'room_assigned' event
+        socket.on('room_assigned', function(data) {
+            currentRoom = data.room;
+            console.log('Assigned room:', currentRoom);
+            if(userType==='student'){
+                socket.emit('message', { content: 'You have been assigned to a room, a member of staff will be with you shortly :)', room: currentRoom, sender: 'System' });
+            }
+        });
+        //Function to request current room name
+        function requestCurrentRoom(){
+            if(userType==='student'){
+                socket.emit('requestCurrentRoom', {username: currentUser});
+            }
+            if(userType==='guardian'){
+                console.log(currentRoom)
+            }
+        }
+        // Function to send a message
+        function sendMessage() {
+            currentUser = '{{session.get("username")}}'
+            requestCurrentRoom()
+            console.log(currentUser, "spoke in", currentRoom)
+            var msgContent = document.getElementById('message_input').value;
+            socket.emit('message', { content: msgContent, room: currentRoom, sender: currentUser });
+            document.getElementById('message_input').value = '';
+        }
+        // Event handler for receiving messages
+        socket.on('message', function (messageData) {
+            console.log('Received message:', messageData);
+            var ul = document.getElementById('messages');
+            var li = document.createElement('li');
+
+            var senderIndicator = document.createElement('span');
+            senderIndicator.classList.add('sender-indicator');
+            senderIndicator.appendChild(document.createTextNode(messageData.sender + ': '));
+
+            li.appendChild(senderIndicator);
+            li.appendChild(document.createTextNode(messageData.content));
+            ul.appendChild(li);
+            if(messageData.room === currentRoom){
+                console.log(messageData.sender, "spoke in", messageData.room)
+            }
+        });
+        socket.on('current_room', function (data){
+            currentRoom = data.room;
+            console.log('Current room:', currentRoom);
+        });
+        //Call function upon loading page
+        window.onload = function () {
+            updateRoomList();
+            scrollMessages()
+        }
+        function updateRoomList() {
+            fetch('/get_rooms')
+                .then(response => response.json())
+                .then(data => {
+                var roomDropdown = document.getElementById('room');
+                roomDropdown.innerHTML = ''; // Clear existing options
+
+                data.forEach(room => {
+                    var option = document.createElement('option');
+                    option.value = room;
+                    option.text = room;
+                    roomDropdown.appendChild(option);
+                });
+            })
+                .catch(error => console.error('Error fetching room list:', error));
+        }
+        function scrollMessages(){
+            var messageContainer = document.getElementById('message-container');
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>

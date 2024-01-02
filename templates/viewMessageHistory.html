@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message History</title>
+</head>
+<body>
+    <h1>Message History</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Content</th>
+                <th>Sender</th>
+                <th>Room</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for message in messages %}
+                <tr>
+                    <td>{{ message.id }}</td>
+                    <td>{{ message.content }}</td>
+                    <td>{{ message.sender }}</td>
+                    <td>{{ message.room }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

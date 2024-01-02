@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User List</title>
+</head>
+<body>
+    <h1>User List</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Promote</th>
+                <th>ID</th>
+                <th>userType</th>
+                <th>Username</th>
+                <th>Password</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+                <tr>
+                    <td>
+                        <button onclick="changeUserType('{{ user.id }}', '{{ user.userType }}')">
+                            Change Type
+                        </button>
+                    </td>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.userType }}</td>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.password }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <script>
+        function changeUserType(userID, currentType) {
+            console.log("user ",id, "was changed from",currentType);
+            fetch('/changeUserType/$')
+        }
+    </script>
+</body>
+</html>
